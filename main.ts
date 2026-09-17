@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
 
       prev = null;
       try { prev = JSON.parse(text); if (typeof prev?.token === "string" && prev.token) token = prev.token; } catch { /* non JSON */ }
-      results.push({ status, text: String(text).slice(0, 20000) });
+      results.push({ status, text: String(text) });
     } catch (e) {
       results.push({ status: 0, text: "FETCH_ERROR: " + String(e) });
     }
