@@ -1,15 +1,15 @@
-// Relais YellowBet — AL VE CAPITAL (Deno Deploy)
+// Relais YellowBet â€” AL VE CAPITAL (Deno Deploy)
 // Rejoue une sequence de requetes sur yellowbet.cg en conservant les cookies et
 // le jeton de session, comme un navigateur. Protege par RELAY_SECRET.
 
 const BASE = "https://yellowbet.cg";
-// Sites autoris�s : le relais ne sert que ces domaines (aucun proxy ouvert).
+// Sites autorisés : le relais ne sert que ces domaines (aucun proxy ouvert).
 const ALLOWED = ["yellowbet.cg", "premierbet.com", "premierbet.cg", "premierbet.cd"];
 function baseOf(v: unknown): string {
   if (!v) return BASE;
   let u: URL;
   try { u = new URL(String(v)); } catch { return BASE; }
-  const host = u.hostname.replace(/^www\\./, "");
+  const host = u.hostname.replace(/^www\./, "");
   if (!ALLOWED.includes(host)) return BASE;
   return u.origin;
 }
@@ -27,8 +27,8 @@ const YB: Record<string, string> = {
   "accept-language": "fr-FR,fr;q=0.9",
 };
 
-// En-t�tes navigateur ordinaires : YB a son propre jeu (channelid/brandid),
-// les autres sites n'attendent qu'un navigateur cr�dible.
+// En-têtes navigateur ordinaires : YB a son propre jeu (channelid/brandid),
+// les autres sites n'attendent qu'un navigateur crédible.
 const PLAIN = (base: string): Record<string, string> => ({
   accept: "application/json, text/plain, */*",
   "user-agent": UA,
