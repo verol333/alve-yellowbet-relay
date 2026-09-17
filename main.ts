@@ -3,6 +3,16 @@
 // le jeton de session, comme un navigateur. Protege par RELAY_SECRET.
 
 const BASE = "https://yellowbet.cg";
+// Sites autorisés : le relais ne sert que ces domaines (aucun proxy ouvert).
+const ALLOWED = ["yellowbet.cg", "premierbet.com", "premierbet.cg", "premierbet.cd"];
+function baseOf(v: unknown): string {
+  if (!v) return BASE;
+  let u: URL;
+  try { u = new URL(String(v)); } catch { return BASE; }
+  const host = u.hostname.replace(/^www\\./, "");
+  if (!ALLOWED.includes(host)) return BASE;
+  return u.origin;
+}
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36";
 const YB: Record<string, string> = {
   "content-type": "application/json",
@@ -17,10 +27,20 @@ const YB: Record<string, string> = {
   "accept-language": "fr-FR,fr;q=0.9",
 };
 
+// En-têtes navigateur ordinaires : YB a son propre jeu (channelid/brandid),
+// les autres sites n'attendent qu'un navigateur crédible.
+const PLAIN = (base: string): Record<string, string> => ({
+  accept: "application/json, text/plain, */*",
+  "user-agent": UA,
+  "accept-language": "fr-FR,fr;q=0.9",
+  origin: base,
+  referer: base + "/",
+});
+
 const get = (o: any, p: string) => { let v: any = o; for (const k of String(p).split(".")) v = v == null ? null : v[k]; return v; };
 
 Deno.serve(async (req) => {
-  if (req.method === "GET") return Response.json({ ok: true, service: "yellowbet-relay" });
+  if (req.method === "GET") return Response.json({ ok: true, service: "alve-relay", sites: ALLOWED });
   if (req.method !== "POST") return Response.json({ error: "POST only" }, { status: 405 });
 
   const secret = Deno.env.get("RELAY_SECRET") || "";
@@ -39,7 +59,9 @@ Deno.serve(async (req) => {
     try {
       if (q.skipIfPrevNull && get(prev, q.skipIfPrevNull) == null) { results.push({ status: 0, text: "SKIPPED" }); continue; }
 
-      const headers: Record<string, string> = { ...YB, ...(q.headers || {}) };
+      const base = baseOf(q.base ?? payload?.base);
+      const isYb = base === BASE;
+      const headers: Record<string, string> = { ...(isYb ? YB : PLAIN(base)), ...(q.headers || {}) };
       if (jar.size) headers.cookie = [...jar.entries()].map(([k, v]) => k + "=" + v).join("; ");
       if (q.useToken && token) { headers.authorization = "Bearer " + token; headers.token = token; }
 
@@ -55,7 +77,7 @@ Deno.serve(async (req) => {
 
       let status = 0, text = "";
       for (let attempt = 0; attempt < 3; attempt++) {
-        const r = await fetch(BASE + q.path, init);
+        const r = await fetch(q.path.startsWith("http") ? q.path : base + q.path, init);
         status = r.status;
         text = await r.text();
         for (const c of r.headers.getSetCookie?.() || []) {
