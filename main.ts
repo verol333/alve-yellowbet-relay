@@ -59,6 +59,12 @@ Deno.serve(async (req) => {
     try {
       if (q.skipIfPrevNull && get(prev, q.skipIfPrevNull) == null) { results.push({ status: 0, text: "SKIPPED" }); continue; }
 
+      // Délai imposé par le site avant cette requête : fixe (delayMs) ou lu dans la
+      // réponse précédente (delayFromPrev, ex: "timeout" = 8000 ms sur un pari live
+      // YellowBet — sans cette attente, executeorder répond « Live time delay not met »).
+      const wait = Math.max(Number(q.delayMs) || 0, q.delayFromPrev ? Number(get(prev, q.delayFromPrev)) || 0 : 0);
+      if (wait > 0) await new Promise((s) => setTimeout(s, Math.min(wait + 300, 20000)));
+
       const base = baseOf(q.base ?? payload?.base);
       const isYb = base === BASE;
       const headers: Record<string, string> = { ...(isYb ? YB : PLAIN(base)), ...(q.headers || {}) };
