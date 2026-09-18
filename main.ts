@@ -4,7 +4,7 @@
 
 const BASE = "https://yellowbet.cg";
 // Sites autorisés : le relais ne sert que ces domaines (aucun proxy ouvert).
-const ALLOWED = ["yellowbet.cg", "premierbet.com", "premierbet.cg", "premierbet.cd", "sports-api.premierbet.com", "api.premierbet.com", "id.premierbet.com"];
+const ALLOWED = ["yellowbet.cg", "premierbet.com", "premierbet.cg", "premierbet.cd", "sports-api.premierbet.com", "users-api.premierbet.com", "api.premierbet.com", "id.premierbet.com"];
 function baseOf(v: unknown): string {
   if (!v) return BASE;
   let u: URL;
@@ -53,11 +53,11 @@ Deno.serve(async (req) => {
   const jar = new Map<string, string>();
   let token = "";
   let prev: any = null;
-  const results: Array<{ status: number; text: string }> = [];
+  const results: Array<{ status: number; text: string; cookie: string }> = [];
 
   for (const q of requests) {
     try {
-      if (q.skipIfPrevNull && get(prev, q.skipIfPrevNull) == null) { results.push({ status: 0, text: "SKIPPED" }); continue; }
+      if (q.skipIfPrevNull && get(prev, q.skipIfPrevNull) == null) { results.push({ status: 0, text: "SKIPPED", cookie: "" }); continue; }
 
       // Délai imposé par le site avant cette requête : fixe (delayMs) ou lu dans la
       // réponse précédente (delayFromPrev, ex: "timeout" = 8000 ms sur un pari live
@@ -81,12 +81,16 @@ Deno.serve(async (req) => {
       const init: RequestInit = { method: q.method || "GET", headers };
       if (body !== undefined && body !== null) init.body = JSON.stringify(body);
 
-      let status = 0, text = "";
+      let status = 0, text = "", setCookie = "";
       for (let attempt = 0; attempt < 3; attempt++) {
         const r = await fetch(q.path.startsWith("http") ? q.path : base + q.path, init);
         status = r.status;
         text = await r.text();
-        for (const c of r.headers.getSetCookie?.() || []) {
+        // Le site peut livrer la session dans un cookie (ex: EDITEC_USER_TOKEN de
+        // PremierBet) : on la garde pour le pot ET on la renvoie a l appelant.
+        const cookies = r.headers.getSetCookie?.() || [];
+        setCookie = cookies.join(", ");
+        for (const c of cookies) {
           const pair = c.split(";")[0];
           const i = pair.indexOf("=");
           if (i > 0) jar.set(pair.slice(0, i).trim(), pair.slice(i + 1).trim());
@@ -99,9 +103,9 @@ Deno.serve(async (req) => {
 
       prev = null;
       try { prev = JSON.parse(text); if (typeof prev?.token === "string" && prev.token) token = prev.token; } catch { /* non JSON */ }
-      results.push({ status, text: String(text) });
+      results.push({ status, text: String(text), cookie: setCookie });
     } catch (e) {
-      results.push({ status: 0, text: "FETCH_ERROR: " + String(e) });
+      results.push({ status: 0, text: "FETCH_ERROR: " + String(e), cookie: "" });
     }
   }
 
