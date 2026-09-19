@@ -4,7 +4,7 @@
 
 const BASE = "https://yellowbet.cg";
 // Sites autorisés : le relais ne sert que ces domaines (aucun proxy ouvert).
-const ALLOWED = ["yellowbet.cg", "premierbet.com", "premierbet.cg", "premierbet.cd", "sports-api.premierbet.com", "users-api.premierbet.com", "api.premierbet.com", "id.premierbet.com"];
+const ALLOWED = ["yellowbet.cg", "premierbet.com", "premierbet.cg", "premierbet.cd", "sports-api.premierbet.com", "users-api.premierbet.com", "api.premierbet.com", "id.premierbet.com", "prod-api.velisports.com", "launcher.velisports.com", "casongo.cg"];
 function baseOf(v: unknown): string {
   if (!v) return BASE;
   let u: URL;
